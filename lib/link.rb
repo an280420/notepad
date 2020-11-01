@@ -1,4 +1,3 @@
-
 class Link < Post
 
   def initialize
