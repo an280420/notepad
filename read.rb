@@ -16,8 +16,6 @@ require_relative 'lib/link'
 require_relative 'lib/memo'
 require_relative 'lib/task'
 
-# id, limit, type
-
 require 'optparse'
 
 # Все наши опции будут записаны сюда
@@ -43,7 +41,13 @@ OptionParser.new do |opt|
 end.parse!
 
 # Вызываем метод find класса Post
-result = Post.find(options[:limit], options[:type], options[:id])
+result = if options[:id].nil?
+         #  если id не передали, то ищем все записи по параметрам
+          Post.find_all(options[:limit], options[:type])
+         else
+         #  если передали id - ищем по id
+         Post.find_by_id(options[:id])
+         end
 
 if result.is_a? Post
   # Если результат — это один объект класса Post, значит выводим его
@@ -69,9 +73,7 @@ else
 
     row.each do |element|
       element_text = "| #{element.to_s.delete("\n")[0..17]}"
-
       element_text << ' ' * (21 - element_text.size)
-
       print element_text
     end
 

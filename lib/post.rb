@@ -9,43 +9,39 @@ class Post
   end
 
   def self.create(type)
-    return  post_types[type].new
+    post_types[type].new
   end
 
-  def self.find(limit, type, id)
+  def initialize
+    @created_at = Time.now
+    @text = []
+  end
+
+  def self.find_by_id(id)
+    return if id.nil? # Если не передали id, возвращаем nil
 
     db = SQLite3::Database.open(@@SQLITE_DB_FILE)
+    db.results_as_hash = true
+    result = db.execute("SELECT * FROM posts WHERE rowid = ?", id)
+    db.close
 
-  #  1. конкретная запись
-    if !id.nil?
-      db.results_as_hash = true
+    return nil if result.empty?
 
-      result = db.execute("SELECT * FROM posts WHERE rowid = ?", id)
+    result = result[0]
 
-      result = result[0] if result.is_a? Array
+    post = create(result['type'])
+    post.load_data(result)
+    post
+  end
 
-      db.close
+  def self.find_all(limit, type)
+    db = SQLite3::Database.open(@@SQLITE_DB_FILE)
 
-      if result.empty?
-        puts "Такой id #{id} не найден в базе :("
-        return nil
-      else
-        post = create(result['type'])
-
-        post.load_data(result)
-
-        return post
-      end
-    else
-    #  2. вернуть таблицу записей
     db.results_as_hash = false
 
-    #  формируем запрос в базу с нужными условиями
     query = "SELECT rowid, * FROM posts "
-
     query += "WHERE type = :type " unless type.nil?
     query += "ORDER by rowid DESC "
-
     query += "LIMIT :limit " unless limit.nil?
 
     statement = db.prepare(query)
@@ -58,14 +54,7 @@ class Post
     statement.close
     db.close
 
-    return result
-    end
-
-  end
-
-  def initialize
-    @created_at = Time.now
-    @text = nil
+    result
   end
 
   def read_from_console
@@ -74,16 +63,6 @@ class Post
 
   def to_strings
     #todo
-  end
-
-  def save
-    file = File.new(file_path, "w:UTF-8")
-
-    for item in to_strings do
-      file.puts(item)
-    end
-
-    file.close
   end
 
   def file_path
@@ -109,10 +88,8 @@ class Post
     )
 
     insert_row_id = db.last_insert_row_id
-
     db.close
-
-    return insert_row_id
+    insert_row_id
   end
 
   def to_db_hash
@@ -125,5 +102,6 @@ class Post
 #  получает на вход хэш массив данных и должен заполнить свои поля
   def load_data(data_hash)
     @created_at = Time.parse(data_hash['created_at'])
+    @text = data_hash['text']
   end
 end
